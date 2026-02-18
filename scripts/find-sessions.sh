@@ -24,7 +24,7 @@ print(d)
 " "$dir_name"
 }
 
-find "$PROJECTS_DIR" -name "*.jsonl" | while IFS= read -r jsonl_file; do
+find "$PROJECTS_DIR" -name "*.jsonl" -not -path "*/subagents/*" | while IFS= read -r jsonl_file; do
     if grep -ql "\"$DATE" "$jsonl_file" 2>/dev/null; then
         project_dir=$(basename "$(dirname "$jsonl_file")")
         project_name=$(extract_project_name "$project_dir")
