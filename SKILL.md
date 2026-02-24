@@ -123,6 +123,7 @@ Use `<h2>` and `<h3>` headings — Apple Notes makes these **collapsible**, so u
 
 ```
 <div><h1>YYYYMMDD</h1></div>
+<div>#Daily</div>
 <div><br></div>
 
 <div><h2>English Corrections</h2></div>
@@ -158,7 +159,7 @@ For each project in QA_JSON:
 Check if a note for the date already exists:
 
 ```bash
-bash "$HOME/.claude/skills/apple-note/scripts/search-notes.sh" iCloud Notes "$DATE"
+bash "$HOME/.claude/skills/apple-note/.claude/skills/apple-note/scripts/search-notes.sh" iCloud Notes "$DATE"
 ```
 
 - If it **exists** → use `update-note.sh` (full replacement)
@@ -166,10 +167,10 @@ bash "$HOME/.claude/skills/apple-note/scripts/search-notes.sh" iCloud Notes "$DA
 
 ```bash
 # Create
-bash "$HOME/.claude/skills/apple-note/scripts/create-note.sh" iCloud Notes "$DATE" "<html content>"
+bash "$HOME/.claude/skills/apple-note/.claude/skills/apple-note/scripts/create-note.sh" iCloud Notes "$DATE" "<html content>"
 
 # Update
-bash "$HOME/.claude/skills/apple-note/scripts/update-note.sh" iCloud Notes "$DATE" "<html content>"
+bash "$HOME/.claude/skills/apple-note/.claude/skills/apple-note/scripts/update-note.sh" iCloud Notes "$DATE" "<html content>"
 ```
 
 **Important:** Always use the `iCloud Notes` folder. Do not try `Daily` or other folders — they may be Smart Folders that reject direct writes.

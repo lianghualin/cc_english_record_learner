@@ -87,7 +87,23 @@ chmod +x ~/.claude/skills/english-record-learner/scripts/*.sh
 chmod +x ~/.claude/skills/english-record-learner/scripts/*.py
 ```
 
-### Step 3 — Verify
+### Step 3 — Auto-approve permissions (optional)
+
+To skip permission prompts when running the skill, create `.claude/settings.local.json` in your project folder:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash"
+    ]
+  }
+}
+```
+
+This only applies when running Claude Code from that project directory.
+
+### Step 4 — Verify
 
 Open Claude Code and type:
 
