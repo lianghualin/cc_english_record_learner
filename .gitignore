@@ -1,0 +1,11 @@
+# LaTeX intermediate files
+*.aux
+*.log
+*.out
+*.toc
+english-corrections.tex
+
+# Generated outputs (regenerate via skill)
+english-corrections.md
+english-corrections.pdf
+english-corrections-unfin.md

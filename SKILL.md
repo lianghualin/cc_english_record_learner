@@ -2,6 +2,28 @@
 
 Record all Claude Code conversations from a specific date — across all projects — into a single dated Apple Note.
 
+## Commands
+
+This skill supports arguments. Check what the user typed after `/english-record-learner`:
+
+| Argument | Action |
+|---|---|
+| *(none)* or a date | Run the **full recording workflow** (Steps 1–9 below) |
+| `unfin` | Run the **extract unfinished** workflow — extract English corrections from all unfinished notes in the `Notes` folder into a Markdown file |
+
+### `unfin` workflow
+
+Extract English corrections from all Apple Notes named `YYYYMMDD` (without `_fin`) in the iCloud `Notes` folder, and write them to `english-corrections-unfin.md` in the current directory.
+
+```bash
+SKILL="$HOME/.claude/skills/english-record-learner"
+bash "$SKILL/scripts/extract-daily-corrections.sh" --unfin
+```
+
+After extraction, tell the user how many notes and corrections were found, and the output file path. Then **stop** — do not continue to the recording steps below.
+
+---
+
 ## What This Skill Does
 
 1. Finds **all** session files across **all** projects for the target date
@@ -90,6 +112,12 @@ Your job:
    - A more natural version
    - A brief explanation of the error type and WHY the correction is better
    - Category: Grammar, Word Choice, Spelling, Sentence Structure, or Capitalization
+6. ALSO look for prompts where the overall expression could be improved — even if individual words are grammatically acceptable, the whole sentence may sound unnatural or non-idiomatic. For these, provide:
+   - The full prompt (or the key sentence) as "original"
+   - A more natural, idiomatic way to express the same meaning as "corrected"
+   - An explanation of why the new version sounds more natural
+   - Category: "Expression"
+   - Only suggest expression improvements when the difference is meaningful — skip if the original is already natural enough
 
 Output ONLY the raw JSON array (no markdown fences, no extra text). Each entry:
 {
@@ -98,6 +126,15 @@ Output ONLY the raw JSON array (no markdown fences, no extra text). Each entry:
   "corrected": "How can I use",
   "category": "Grammar",
   "explanation": "After 'can' (modal verb), use the base form 'use', not the -ing form."
+}
+
+Expression example:
+{
+  "prompt_num": 3,
+  "original": "I want to know this function do what thing",
+  "corrected": "I'd like to understand what this function does",
+  "category": "Expression",
+  "explanation": "The whole sentence follows Chinese word order ('do what thing'). In English, use 'what [subject] does' — and 'I'd like to understand' is more natural than 'I want to know'."
 }
 
 Be thorough and educational. Group related errors from the same prompt into separate entries.
@@ -123,15 +160,12 @@ Use `<h2>` and `<h3>` headings — Apple Notes makes these **collapsible**, so u
 
 ```
 <div><h1>YYYYMMDD</h1></div>
-<div>#Daily</div>
-<div><br></div>
-
 <div><h2>English Corrections</h2></div>
 
 For each project that has corrections:
   <div><h3>[project name]</h3></div>
 
-  Group corrections by category (Grammar, Sentence Structure, Word Choice, Spelling, Capitalization).
+  Group corrections by category (Grammar, Sentence Structure, Word Choice, Spelling, Capitalization, Expression).
   For each category:
     <div><b>[Category] ([count])</b></div>
     <table border="1" cellpadding="4" cellspacing="0">
@@ -175,7 +209,15 @@ bash "$HOME/.claude/skills/apple-note/.claude/skills/apple-note/scripts/update-n
 
 **Important:** Always use the `iCloud Notes` folder. Do not try `Daily` or other folders — they may be Smart Folders that reject direct writes.
 
-### Step 8 — Confirm
+### Step 8 — Move to Daily_fin folder
+
+After the note is created or updated, move it to the `Daily_fin` folder:
+
+```bash
+bash "$HOME/.claude/skills/apple-note/.claude/skills/apple-note/scripts/move-note.sh" iCloud Notes "$DATE" "Daily_fin"
+```
+
+### Step 9 — Confirm
 
 Tell the user:
 - The note title saved
@@ -191,8 +233,9 @@ Tell the user:
 - **Always use a subagent for prompt analysis** — launch a Task subagent to analyze user prompts for English errors; this produces more thorough, educational corrections than inline analysis
 - **Ignore technical content** — don't correct code, file paths, CLI commands, or technical terms
 - **Merge corrections** — combine extracted corrections with subagent-generated ones, avoiding duplicates
-- **Group corrections by category** — Grammar, Sentence Structure, Word Choice, Spelling, Capitalization
+- **Group corrections by category** — Grammar, Sentence Structure, Word Choice, Spelling, Capitalization, Expression
 - **Include explanations** — each correction must have a "Why" column explaining the grammar rule
+- **Expression improvements** — suggest more natural/idiomatic ways to express the same meaning when the overall phrasing sounds non-native, even if individual words are grammatically acceptable
 - **Corrections section is optional** — only include if there are corrections (extracted or generated)
 - **Skip system messages, tool calls, and progress entries** — scripts handle this automatically
 - **If no date is given, default to today**

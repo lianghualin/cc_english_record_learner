@@ -1,0 +1,127 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1.8cm,top=2cm,bottom=2cm]{geometry}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{array}
+\usepackage{ragged2e}
+
+% Colors
+\definecolor{datecolor}{HTML}{1a5276}
+\definecolor{projcolor}{HTML}{2e86c1}
+\definecolor{catcolor}{HTML}{e67e22}
+\definecolor{headerrow}{HTML}{eaf2f8}
+\definecolor{lightgray}{HTML}{f5f5f5}
+
+% Section formatting
+\titleformat{\section}{\Large\bfseries\color{datecolor}}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{projcolor}}{}{0em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{catcolor}}{}{0em}{}
+
+% Header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{English Corrections}}
+\fancyhead[R]{\small\textcolor{gray}{%%DATE_RANGE%%}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Table column type for wrapping
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=datecolor,
+    urlcolor=projcolor,
+}
+
+\begin{document}
+
+% ============================================================
+% TITLE PAGE
+% ============================================================
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+
+{\Huge\bfseries\color{datecolor} English Corrections}\\[0.5cm]
+{\Large Daily Learning Record}\\[1cm]
+{\large %%DATE_RANGE%%}\\[0.5cm]
+{\large %%NUM_DATES%% Daily Notes \textbullet{} %%NUM_PROJECTS%% Projects \textbullet{} %%TOTAL_CORRECTIONS%% Corrections}\\[3cm]
+
+\begin{minipage}{0.7\textwidth}
+\centering
+\textit{Extracted from Claude Code conversations.\\
+Each correction preserves the original text, a more natural version, and an explanation.}
+\end{minipage}
+
+\vfill
+{\small Generated from \texttt{english-corrections.md}}
+\end{titlepage}
+
+% ============================================================
+% TABLE OF CONTENTS
+% ============================================================
+\tableofcontents
+\newpage
+
+% ============================================================
+% SUMMARY
+% ============================================================
+\section*{Summary}
+\addcontentsline{toc}{section}{Summary}
+
+\subsection*{By Category}
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{\%} \\
+\midrule
+%%CATEGORY_TABLE_ROWS%%
+\midrule
+\textbf{Total} & \textbf{%%TOTAL_CORRECTIONS%%} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{By Date}
+
+\begin{center}
+\begin{tabular}{lr|lr}
+\toprule
+\textbf{Date} & \textbf{Count} & \textbf{Date} & \textbf{Count} \\
+\midrule
+%%DATE_TABLE_ROWS%%
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{By Project (Top 10)}
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Project} & \textbf{Count} & \textbf{\%} \\
+\midrule
+%%PROJECT_TABLE_ROWS%%
+\bottomrule
+\end{tabular}
+\end{center}
+
+\newpage
+
+% ============================================================
+% CORRECTIONS BY DATE
+% ============================================================
+%%CORRECTIONS_CONTENT%%
+
+\end{document}

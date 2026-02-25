@@ -116,11 +116,12 @@ Open Claude Code and type:
 ```
 /english-record-learner              # record today's conversations
 /english-record-learner 2026-02-17   # record a specific date
+/english-record-learner unfin        # extract corrections from unfinished notes
 ```
 
 ## How It Works
 
-The skill uses three scripts to minimize token usage:
+The recording workflow uses three scripts to minimize token usage:
 
 ```
 ┌──────────────────┐
@@ -136,13 +137,19 @@ The skill uses three scripts to minimize token usage:
 └────────┬─────────────────┘
          ↓
 ┌──────────────────┐
-│   Claude Code    │ → only summarizes assistant text + saves to Apple Note
+│   Claude Code    │ → summarizes assistant text, saves to Apple Note,
+│                  │   then moves note to Daily_fin folder
 └──────────────────┘
 ```
 
 **Without scripts:** Claude reads raw `.jsonl` files full of system messages, tool calls, and progress entries — wasting tokens on noise.
 
 **With scripts:** Claude only receives clean text — user prompts and assistant responses ready to summarize.
+
+### Note Lifecycle
+
+1. **Recording** (`/english-record-learner`) — creates a note named `YYYYMMDD` in the `Notes` folder, then moves it to `Daily_fin`
+2. **Extract unfinished** (`/english-record-learner unfin`) — extracts English corrections from notes still in `Notes` (not yet moved to `Daily_fin`) into a Markdown file
 
 ## Scripts Reference
 
@@ -151,17 +158,21 @@ The skill uses three scripts to minimize token usage:
 | `find-sessions.sh [DATE]` | Date (YYYY-MM-DD), defaults to today | `project\|filepath` lines |
 | `extract-qa.py --date DATE sessions...` | Session entries from find-sessions | JSON array of Q&A pairs |
 | `extract-corrections.py --date DATE sessions...` | Session entries from find-sessions | JSON object of corrections by project |
+| `extract-daily-corrections.sh [--unfin]` | Apple Notes in Daily_fin or Notes folder | Markdown file with all corrections |
+| `parse-daily-corrections.py <dir> <out>` | Directory of note HTML files | Markdown file (used by extract-daily-corrections.sh) |
 
 ## File Structure
 
 ```
 english-record-learner/
-├── README.md          ← this file
-├── SKILL.md           ← skill instructions for Claude Code
+├── README.md                    ← this file
+├── SKILL.md                     ← skill instructions for Claude Code
 └── scripts/
     ├── find-sessions.sh
     ├── extract-qa.py
-    └── extract-corrections.py
+    ├── extract-corrections.py
+    ├── extract-daily-corrections.sh  ← extracts corrections from Apple Notes
+    └── parse-daily-corrections.py    ← HTML table parser for the above
 ```
 
 ## Related
