@@ -10,6 +10,7 @@ This skill supports arguments. Check what the user typed after `/english-record-
 |---|---|
 | *(none)* or a date | Run the **full recording workflow** (Steps 1–9 below) |
 | `unfin` | Run the **extract unfinished** workflow — extract English corrections from all unfinished notes in the `Notes` folder into a Markdown file |
+| `pdf` | Run the **PDF generation** workflow — extract corrections from all `_fin` notes, convert to PDF, output only the PDF to the current directory |
 
 ### `unfin` workflow
 
@@ -21,6 +22,39 @@ bash "$SKILL/scripts/extract-daily-corrections.sh" --unfin
 ```
 
 After extraction, tell the user how many notes and corrections were found, and the output file path. Then **stop** — do not continue to the recording steps below.
+
+### `pdf` workflow
+
+Extract English corrections from all `_fin` notes in `Daily_fin`, convert to a styled PDF, and output only the PDF to the current directory. All intermediate files (`.md`, `.tex`, `.log`, `.aux`, `.out`, `.toc`) are generated in a temp directory and cleaned up automatically.
+
+Run these steps sequentially (each as a separate bash command):
+
+```bash
+# Step 1 — Create temp dir and extract corrections
+WORK=$(mktemp -d)
+SKILL="$HOME/.claude/skills/english-record-learner"
+bash "$SKILL/scripts/extract-daily-corrections.sh" "$WORK/english-corrections.md"
+```
+
+```bash
+# Step 2 — Convert markdown to LaTeX
+SKILL="$HOME/.claude/skills/english-record-learner"
+python3 "$SKILL/scripts/md2latex.py" "$WORK/english-corrections.md" "$WORK/english-corrections.tex"
+```
+
+```bash
+# Step 3 — Compile LaTeX to PDF (two passes for TOC, use -output-directory to avoid cd)
+pdflatex -interaction=nonstopmode -output-directory="$WORK" "$WORK/english-corrections.tex" > /dev/null 2>&1
+pdflatex -interaction=nonstopmode -output-directory="$WORK" "$WORK/english-corrections.tex" > /dev/null 2>&1
+```
+
+```bash
+# Step 4 — Copy PDF to current directory and clean up
+cp "$WORK/english-corrections.pdf" ./english-corrections.pdf
+rm -rf "$WORK"
+```
+
+Tell the user the output file path and how many corrections/notes were included. Then **stop**.
 
 ---
 
@@ -47,6 +81,9 @@ All scripts are in `scripts/` inside this skill folder.
 | `find-sessions.sh [DATE]` | Find all session files for a date across all projects |
 | `extract-qa.py [--date DATE] PROJECT\|FILE ...` | Extract clean Q&A pairs as JSON |
 | `extract-corrections.py [--date DATE] PROJECT\|FILE ...` | Extract English correction tables as JSON |
+| `extract-daily-corrections.sh [--unfin] [output]` | Extract corrections from Apple Notes to Markdown |
+| `parse-daily-corrections.py <dir> <output>` | Parse note HTML files into consolidated Markdown |
+| `md2latex.py <input_md> <output_tex>` | Convert corrections Markdown to styled LaTeX for PDF |
 
 DATE format: `YYYY-MM-DD`. Defaults to today if omitted.
 
