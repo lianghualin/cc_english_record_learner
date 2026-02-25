@@ -6,6 +6,7 @@ Converts the english-corrections.md file into a LaTeX document
 using template.tex for layout.
 """
 
+import difflib
 import os
 import re
 import sys
@@ -33,6 +34,36 @@ def escape_latex(text):
     text = text.replace('\u201c', '``')
     text = text.replace('\u201d', "''")
     return text
+
+
+def highlight_diff(wrote, natural):
+    """Compare two strings word-by-word and return (wrote_highlighted, natural_highlighted)
+    with LaTeX color commands: red for errors, green for corrections."""
+    wrote_words = wrote.split()
+    natural_words = natural.split()
+
+    sm = difflib.SequenceMatcher(None, wrote_words, natural_words)
+
+    wrote_parts = []
+    natural_parts = []
+
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == 'equal':
+            wrote_parts.extend(escape_latex(w) for w in wrote_words[i1:i2])
+            natural_parts.extend(escape_latex(w) for w in natural_words[j1:j2])
+        elif op == 'replace':
+            for w in wrote_words[i1:i2]:
+                wrote_parts.append('\\textcolor{errcolor}{' + escape_latex(w) + '}')
+            for w in natural_words[j1:j2]:
+                natural_parts.append('\\textcolor{fixcolor}{' + escape_latex(w) + '}')
+        elif op == 'delete':
+            for w in wrote_words[i1:i2]:
+                wrote_parts.append('\\textcolor{errcolor}{' + escape_latex(w) + '}')
+        elif op == 'insert':
+            for w in natural_words[j1:j2]:
+                natural_parts.append('\\textcolor{fixcolor}{' + escape_latex(w) + '}')
+
+    return ' '.join(wrote_parts), ' '.join(natural_parts)
 
 
 def parse_md(filepath):
@@ -185,8 +216,7 @@ def gen_corrections_content(data):
                 lines.append(r"\endhead")
 
                 for i, row in enumerate(rows):
-                    wrote = escape_latex(row['wrote'])
-                    natural = escape_latex(row['natural'])
+                    wrote, natural = highlight_diff(row['wrote'], row['natural'])
                     why = escape_latex(row['why'])
                     if i % 2 == 1:
                         lines.append(r"\rowcolor{lightgray}")
