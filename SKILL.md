@@ -16,12 +16,67 @@ This skill supports arguments. Check what the user typed after `/english-record-
 
 Extract English corrections from all Apple Notes named `YYYYMMDD` (without `_fin`) in the iCloud `Notes` folder, and write them to `english-corrections-unfin.md` in the current directory.
 
+**Step 1 — Extract corrections and detect repetitions:**
+
 ```bash
 SKILL="$HOME/.claude/skills/english-record-learner"
 bash "$SKILL/scripts/extract-daily-corrections.sh" --unfin
 ```
 
-After extraction, tell the user how many notes and corrections were found, and the output file path. Then **stop** — do not continue to the recording steps below.
+The script extracts corrections, user prompts, and appends a "Repeated Patterns" section with frequency data.
+
+**Step 2 — Analyze repetitions with a subagent:**
+
+If the output file contains a "## Repeated Patterns" section, read the entire file and launch a **Task subagent** (`subagent_type: general-purpose`) with this prompt:
+
+```
+You are an expert English teacher helping a Chinese English learner improve their expression variety.
+
+Below is a Markdown file containing:
+1. English corrections grouped by date (with "What you wrote" / "More natural" / "Why" tables)
+2. A "Repeated Patterns" section with:
+   - Repeated Mistakes: same phrases corrected on multiple dates
+   - Frequently Used Words: overused words in their prompts
+   - Frequently Used Phrases: overused two-word phrases in their prompts
+
+Your job:
+1. For each "Repeated Mistake", explain WHY the user keeps making this error (the underlying grammar/vocabulary habit), and give 2-3 varied correct alternatives they can use instead.
+2. For the frequently used words and phrases, identify which ones indicate LIMITED vocabulary or unnatural expression (skip words that are naturally frequent like technical terms). For each problematic one, suggest 2-3 richer alternatives with example sentences.
+3. Look across ALL corrections for recurring ERROR PATTERNS — not just exact duplicates, but the same TYPE of mistake (e.g., always confusing "make" vs "do", always dropping articles, always using "-ing" after modals). List each pattern with examples from the data and a clear rule to remember.
+
+Output as Markdown with these sections:
+
+## Improvement Suggestions
+
+### Habitual Mistakes
+For each repeated mistake:
+- **"[phrase]"** (appeared X times on [dates])
+  - Why this keeps happening: [explanation of the underlying habit]
+  - Try instead: "[alt1]", "[alt2]", "[alt3]"
+
+### Recurring Error Patterns
+For each pattern found across corrections:
+- **[Pattern name]** (e.g., "Missing articles before countable nouns")
+  - Examples from your writing: "[example1]", "[example2]"
+  - Rule: [clear, memorable rule]
+
+### Vocabulary Expansion
+For each overused word/phrase:
+- **"[word/phrase]"** (used X times)
+  - Try instead: "[alt1]" — [when to use it]
+  - Try instead: "[alt2]" — [when to use it]
+  - Example: "[natural sentence using the alternative]"
+
+Be specific, educational, and encouraging. Only include patterns where improvement would be meaningful.
+
+Here is the full corrections file:
+
+[paste the full content of english-corrections-unfin.md here]
+```
+
+**Step 3 — Append results:**
+
+Read the subagent's response and append it to `english-corrections-unfin.md` (after a `---` separator). Then tell the user how many notes and corrections were found, highlight the key repeated patterns discovered, and the output file path. Then **stop** — do not continue to the recording steps below.
 
 ### `pdf` workflow
 
@@ -61,10 +116,10 @@ Tell the user the output file path and how many corrections/notes were included.
 ## What This Skill Does
 
 1. Finds **all** session files across **all** projects for the target date
-2. Extracts all Q&A — user prompts kept **exact**, assistant responses **summarized**
+2. Extracts all Q&A — user prompts kept **exact**, assistant responses extracted
 3. Groups Q&A by project so the note is organized
 4. Collects all English corrections made across all sessions, grouped by project
-5. Analyzes all user prompts for English errors and generates additional corrections
+5. Launches **parallel subagents**: one to analyze prompts for English errors (with conversation context), one to summarize assistant responses
 6. Saves everything to a dated Apple Note (`YYYYMMDD`)
 
 ## Storage Locations
@@ -131,13 +186,29 @@ xargs python3 "$SKILL/scripts/extract-corrections.py" --date "$DATE_ISO" < /tmp/
 
 Output is a JSON object in `/tmp/corrections_YYYYMMDD.json` grouped by project — correction rows already extracted.
 
-### Step 5 — Analyze user prompts for English errors (subagent)
+### Step 5 — Parallel subagents: corrections + summarization
 
-First, extract all user prompts from QA_JSON into a plain text list (numbered, one per line). Then launch a **Task subagent** (subagent_type: `general-purpose`) with the following prompt:
+Launch **two Task subagents in parallel** (both `subagent_type: general-purpose`). Both receive the Q&A JSON from Step 3. Use a single message with two Task tool calls so they run concurrently.
+
+#### Step 5a — Correction subagent
+
+Format the Q&A pairs from QA_JSON into a numbered list **with conversation context**. For each user prompt, include a brief excerpt from the preceding assistant response (~100 chars) so the subagent understands what the user was replying to. Format:
+
+```
+--- Project: project-name ---
+
+[1] (After assistant: "I've created the helper function that handles...")
+    User: "how can i using this function in my code"
+
+[2] User: "please help me fix the bug"
+```
+
+Then launch the subagent with this prompt:
 
 ```
 You are an expert English teacher analyzing prompts written by a Chinese English learner.
 These are messages they typed to an AI coding assistant (Claude Code).
+Each prompt includes brief context from the preceding assistant response so you can understand what the user was replying to — use this context to better judge what the user was trying to say, but only analyze the user's own words.
 
 Your job:
 1. Identify ALL English errors in each prompt (grammar, word choice, spelling, sentence structure, capitalization)
@@ -176,9 +247,9 @@ Expression example:
 
 Be thorough and educational. Group related errors from the same prompt into separate entries.
 
-Here are the prompts to analyze:
+Here are the prompts to analyze (with conversation context):
 
-[paste the numbered user prompts here]
+[paste the formatted Q&A pairs here]
 ```
 
 **Important:** The subagent may not be able to write files to disk. Handle both cases:
@@ -187,9 +258,42 @@ Here are the prompts to analyze:
 
 Either way, merge the subagent corrections with any corrections from Step 4. Do not duplicate — if an extracted correction already covers the same phrase, skip it.
 
+#### Step 5b — Summarization subagent
+
+Launch **in parallel** with the correction subagent (same message, second Task tool call). Pass the full QA_JSON from Step 3 with this prompt:
+
+```
+You are summarizing assistant responses from Claude Code conversations.
+
+Rules:
+- Keep user prompts EXACTLY as-is — do not correct, rephrase, or modify them in any way
+- Summarize each assistant response into 1-3 concise sentences that capture the key action or answer
+- If an assistant response is already short (under 50 words), keep it as-is
+- Preserve the project grouping structure
+
+Output a JSON array with the same structure as the input, but with assistant texts replaced by summaries:
+[
+  {
+    "project": "project-name",
+    "messages": [
+      {"role": "user", "text": "exact user prompt unchanged"},
+      {"role": "assistant", "text": "Summarized response in 1-3 sentences."}
+    ]
+  }
+]
+
+Output ONLY the raw JSON array (no markdown fences, no extra text).
+
+Here is the Q&A data to summarize:
+
+[paste the full QA_JSON here]
+```
+
+**Important:** Same file-handling as Step 5a — parse from response text or from `/tmp/summarized_qa_YYYYMMDD.json`.
+
 ### Step 6 — Build the Apple Note content
 
-Using the JSON from Steps 3, 4, and 5, build the note as HTML.
+Using the corrections from Steps 4 + 5a and the summarized Q&A from Step 5b, build the note as HTML. The main agent no longer needs to summarize responses — Step 5b already did that.
 
 Use `<h2>` and `<h3>` headings — Apple Notes makes these **collapsible**, so users can expand/collapse sections.
 
@@ -214,14 +318,14 @@ For each project that has corrections:
 
 <div><h2>Conversations</h2></div>
 
-For each project in QA_JSON:
+For each project in the summarized Q&A from Step 5b:
   <div><h3>[project name]</h3></div>
   <div><br></div>
 
   For each Q&A pair:
-    <div>❯ [exact user prompt]</div>
+    <div>❯ [exact user prompt — unchanged from original]</div>
     <div><br></div>
-    <div>⏺ [summarized assistant response — 1 to 3 sentences]</div>
+    <div>⏺ [summarized assistant response from Step 5b]</div>
     <div><br></div>
 ```
 
@@ -265,9 +369,9 @@ Tell the user:
 ## Rules
 
 - **Never summarize user prompts** — keep them exactly as written, typos and all
-- **Always summarize assistant responses** — 1 to 3 sentences max
+- **Always use parallel subagents** — launch two Task subagents in a single message: one for English corrections (Step 5a), one for response summarization (Step 5b). This keeps the main context lean and lets both run concurrently.
+- **Give the correction subagent conversation context** — include preceding assistant response excerpts so it can better understand what the user was trying to say
 - **Group by project** — makes it easy to see which conversation belongs where
-- **Always use a subagent for prompt analysis** — launch a Task subagent to analyze user prompts for English errors; this produces more thorough, educational corrections than inline analysis
 - **Ignore technical content** — don't correct code, file paths, CLI commands, or technical terms
 - **Merge corrections** — combine extracted corrections with subagent-generated ones, avoiding duplicates
 - **Group corrections by category** — Grammar, Sentence Structure, Word Choice, Spelling, Capitalization, Expression
