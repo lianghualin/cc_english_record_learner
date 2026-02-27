@@ -11,6 +11,7 @@ This skill supports arguments. Check what the user typed after `/english-record-
 | *(none)* or a date | Run the **full recording workflow** (Steps 1–9 below) |
 | `unfin` | Run the **extract unfinished** workflow — extract English corrections from all unfinished notes in the `Notes` folder into a Markdown file |
 | `pdf` | Run the **PDF generation** workflow — extract corrections from all `_fin` notes, convert to PDF, output only the PDF to the current directory |
+| `sync` | Run the **remote sync** workflow — sync Claude Code session files from remote machines to the local `~/.claude/projects/` directory |
 
 ### `unfin` workflow
 
@@ -110,6 +111,41 @@ rm -rf "$WORK"
 ```
 
 Tell the user the output file path and how many corrections/notes were included. Then **stop**.
+
+### `sync` workflow
+
+Sync Claude Code session files from remote machines into the local `~/.claude/projects/` directory so they can be included in future recording runs.
+
+**Remote machines:**
+
+| Host | SSH target |
+|---|---|
+| Linux server | `root@172.101.1.40` |
+
+**Step 1 — Sync each remote machine:**
+
+For each remote machine listed above, run rsync to pull its session files:
+
+```bash
+rsync -avz --progress root@172.101.1.40:~/.claude/projects/ ~/.claude/projects/
+```
+
+Remote project directories use different path prefixes (e.g., `-home-project-*`) so they won't collide with local ones (`-Users-*`).
+
+**Step 2 — Report results:**
+
+Tell the user:
+- Which machines were synced
+- How many new/updated project directories were transferred
+- Any connection failures
+
+Then **stop** — do not continue to the recording steps.
+
+**Tip:** Run `sync` before a recording run to ensure conversations from all machines are included. For example:
+```
+/english-record-learner sync
+/english-record-learner 2026-02-27
+```
 
 ---
 
