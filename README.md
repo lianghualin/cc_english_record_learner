@@ -87,11 +87,15 @@ chmod +x ~/.claude/skills/english-record-learner/scripts/*.sh
 chmod +x ~/.claude/skills/english-record-learner/scripts/*.py
 ```
 
-### Step 3 — Auto-approve permissions (optional)
+### Step 3 — Auto-approve Bash permissions (recommended)
 
-To skip permission prompts when running the skill, create `.claude/settings.local.json` in your project folder:
+This skill runs several shell scripts during execution. By default, Claude Code will ask you to approve **each** Bash command, which makes the process very interactive.
 
-```json
+To reduce prompts, you can allow Bash commands by creating `.claude/settings.local.json` in your project folder:
+
+```bash
+mkdir -p .claude
+cat > .claude/settings.local.json << 'EOF'
 {
   "permissions": {
     "allow": [
@@ -99,9 +103,10 @@ To skip permission prompts when running the skill, create `.claude/settings.loca
     ]
   }
 }
+EOF
 ```
 
-This only applies when running Claude Code from that project directory.
+> **Note:** This is a local setting — it is not tracked by git and only applies when running Claude Code from that project directory. You can remove it at any time by deleting the file.
 
 ### Step 4 — Verify
 
